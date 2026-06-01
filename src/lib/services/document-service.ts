@@ -48,10 +48,11 @@ async function saveDocument(
   documentType: DocumentType,
   content: string,
   warnings: string[],
+  country: string,
 ): Promise<GeneratedDocument> {
   // Determine version number (auto‑increment per job + type).
   const { count } = await supabase
-    .from('documents')
+    .from('generated_documents')
     .select('*', { count: 'exact', head: true })
     .eq('job_id', jobId)
     .eq('user_id', userId)
@@ -60,11 +61,13 @@ async function saveDocument(
   const version = (count ?? 0) + 1;
 
   const { data, error } = await supabase
-    .from('documents')
+    .from('generated_documents')
     .insert({
       job_id: jobId,
       user_id: userId,
       document_type: documentType,
+      title: `${documentType.replace('_', ' ')} v${version}`,
+      country,
       content,
       warnings,
       version,
@@ -77,7 +80,7 @@ async function saveDocument(
   // Update job status to reflect documents have been generated.
   await supabase
     .from('jobs')
-    .update({ status: 'documents_generated', updated_at: new Date().toISOString() })
+    .update({ status: 'drafted', updated_at: new Date().toISOString() })
     .eq('id', jobId)
     .eq('user_id', userId);
 
@@ -101,7 +104,7 @@ export async function generateCV(
   const raw = await ai.complete({ messages, temperature: 0.4, maxTokens: 4000 });
 
   const { cleanContent, warnings } = extractWarnings(raw);
-  return saveDocument(supabase, jobId, userId, 'cv', cleanContent, warnings);
+  return saveDocument(supabase, jobId, userId, 'cv', cleanContent, warnings, job.country ?? 'GB');
 }
 
 /**
@@ -127,7 +130,7 @@ export async function generateCoverLetter(
   const raw = await ai.complete({ messages, temperature: 0.5, maxTokens: 2000 });
 
   const { cleanContent, warnings } = extractWarnings(raw);
-  return saveDocument(supabase, jobId, userId, 'cover_letter', cleanContent, warnings);
+  return saveDocument(supabase, jobId, userId, 'cover_letter', cleanContent, warnings, job.country ?? 'GB');
 }
 
 /**
@@ -152,5 +155,5 @@ export async function generateSupportingStatement(
   const raw = await ai.complete({ messages, temperature: 0.4, maxTokens: 4000 });
 
   const { cleanContent, warnings } = extractWarnings(raw);
-  return saveDocument(supabase, jobId, userId, 'supporting_statement', cleanContent, warnings);
+  return saveDocument(supabase, jobId, userId, 'supporting_statement', cleanContent, warnings, job.country ?? 'GB');
 }

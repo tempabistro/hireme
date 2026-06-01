@@ -54,15 +54,24 @@ export async function scoreJob(
   }
 
   const { data: cpData } = await cpQuery;
-  const countryPref = cpData?.[0];
-  if (!countryPref) {
-    throw new Error('No active country preference found. Please set up your country preferences.');
-  }
+  const countryPref = cpData?.[0] ?? {
+    id: null,
+    country_code: job.country || 'GB',
+    country_name: 'Default',
+    is_active: true,
+    minimum_salary: null,
+    salary_currency: 'GBP',
+    work_authorisation_status: 'unknown',
+    visa_sponsorship_required: 'maybe',
+    preferred_cities: [],
+    excluded_cities: [],
+    remote_preference: true,
+    hybrid_preference: true,
+    onsite_preference: true,
+    willing_to_relocate: 'maybe',
+  };
 
-  const countryConfig = getCountryConfig(countryPref.country_code);
-  if (!countryConfig) {
-    throw new Error(`Country config not found for ${countryPref.country_code}.`);
-  }
+  const countryConfig = getCountryConfig(countryPref.country_code) || getCountryConfig('GB')!;
 
   // 4. Call AI
   const ai = createAIProvider();
@@ -106,7 +115,7 @@ export async function scoreJob(
     .insert({
       job_id: jobId,
       user_id: userId,
-      country_preference_id: countryPref.id,
+      country_preference_id: countryPref.id || null,
       overall_score: aiResult.overall_score,
       role_score: aiResult.role_score,
       skills_score: aiResult.skills_score,

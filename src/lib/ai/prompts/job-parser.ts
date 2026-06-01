@@ -18,42 +18,42 @@ Your task is to extract structured JSON from a raw job posting.
 RULES:
 - Extract ONLY information explicitly stated in the text.
 - Do NOT guess, infer, or fabricate any field.
-- If a field is not mentioned, set its value to null.
+- If a field is not mentioned, set its value to null (for strings/numbers) or [] (for arrays).
 - For salary, extract exact numbers when stated; otherwise null.
-- For skills, separate "required" from "nice to have" carefully.
-- For visa_sponsorship, only set true/false if explicitly stated; otherwise null.
-- Return a single JSON object matching this exact schema:
+- For skills, separate "must have" from "nice to have" carefully.
+- Return a single JSON object matching this EXACT schema:
 
 {
-  "title": string | null,
-  "company": string | null,
-  "location": string | null,
+  "title": string,
+  "company": string,
   "country": string | null,
+  "city": string | null,
   "work_mode": "remote" | "hybrid" | "onsite" | null,
   "salary_min": number | null,
   "salary_max": number | null,
-  "salary_currency": string | null,
+  "currency": string | null,
+  "responsibilities": string[],
+  "must_have_skills": string[],
+  "nice_to_have_skills": string[],
+  "tools": string[],
+  "certifications": string[],
+  "education": string | null,
+  "years_experience": number | null,
+  "visa_sponsorship": string | null,
+  "work_authorisation": string | null,
   "seniority": string | null,
-  "employment_type": string | null,
   "industry": string | null,
-  "department": string | null,
-  "required_skills": string[] | null,
-  "nice_to_have_skills": string[] | null,
-  "required_experience_years": number | null,
-  "required_qualifications": string[] | null,
-  "responsibilities": string[] | null,
-  "benefits": string[] | null,
-  "visa_sponsorship": boolean | null,
-  "application_deadline": string | null,
-  "application_url": string | null,
-  "contact_email": string | null,
-  "warnings": string[]
+  "contract_type": "permanent" | "contract" | "freelance" | "internship" | null,
+  "deadline": string | null,
+  "risks": string[],
+  "missing_information": string[]
 }
 
-In the "warnings" array, include notes about:
-- Missing critical information (e.g., "No salary information provided")
-- Ambiguous requirements
-- Anything that may need human verification
+For "title" and "company": always extract these even if you must use the most likely value from context. Never return null for these — use "Unknown" if truly absent.
+
+For "risks": include red flags like unrealistic requirements, low salary, visa issues, etc.
+
+For "missing_information": note what is NOT stated (e.g., "No salary information", "Remote policy unclear").
 
 Return ONLY the JSON object, no additional text.`,
     },
