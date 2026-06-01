@@ -17,14 +17,26 @@ import {
   Inbox,
 } from 'lucide-react';
 
-const stats = [
-  { label: 'Total Jobs', value: 47, icon: Briefcase, color: 'text-brand-light', bgColor: 'bg-brand/10' },
-  { label: 'Recommended', value: 12, icon: Star, color: 'text-accent-emerald', bgColor: 'bg-accent-emerald/10' },
-  { label: 'Drafted Packs', value: 8, icon: FileText, color: 'text-accent-amber', bgColor: 'bg-accent-amber/10' },
-  { label: 'Approved', value: 5, icon: CheckCircle2, color: 'text-brand-light', bgColor: 'bg-brand/10' },
-  { label: 'Applied', value: 3, icon: Send, color: 'text-accent-emerald', bgColor: 'bg-accent-emerald/10' },
-  { label: 'Follow-ups', value: 2, icon: Bell, color: 'text-accent-amber', bgColor: 'bg-accent-amber/10' },
-];
+interface DashboardStats {
+  totalJobs: number;
+  scored: number;
+  applied: number;
+  interviews: number;
+  drafts: number;
+  countries: number;
+  pendingPacks: number;
+}
+
+function buildStats(s: DashboardStats) {
+  return [
+    { label: 'Total Jobs', value: s.totalJobs, icon: Briefcase, color: 'text-brand-light', bgColor: 'bg-brand/10' },
+    { label: 'Scored', value: s.scored, icon: Star, color: 'text-accent-emerald', bgColor: 'bg-accent-emerald/10' },
+    { label: 'Drafted Packs', value: s.drafts, icon: FileText, color: 'text-accent-amber', bgColor: 'bg-accent-amber/10' },
+    { label: 'Pending Review', value: s.pendingPacks, icon: CheckCircle2, color: 'text-brand-light', bgColor: 'bg-brand/10' },
+    { label: 'Applied', value: s.applied, icon: Send, color: 'text-accent-emerald', bgColor: 'bg-accent-emerald/10' },
+    { label: 'Interviews', value: s.interviews, icon: Bell, color: 'text-accent-amber', bgColor: 'bg-accent-amber/10' },
+  ];
+}
 
 const quickActions = [
   {
@@ -52,10 +64,25 @@ const quickActions = [
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
+  const [dashStats, setDashStats] = useState<DashboardStats>({
+    totalJobs: 0, scored: 0, applied: 0, interviews: 0, drafts: 0, countries: 0, pendingPacks: 0,
+  });
 
   useEffect(() => {
     setMounted(true);
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/dashboard/stats');
+        if (res.ok) {
+          const data = await res.json();
+          setDashStats(data);
+        }
+      } catch {}
+    };
+    fetchStats();
   }, []);
+
+  const stats = buildStats(dashStats);
 
   return (
     <div className="page-content space-y-8">

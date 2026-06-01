@@ -116,17 +116,30 @@ export default function CountriesPage() {
 
   useEffect(() => {
     setMounted(true);
-    // Initialize preferences from supported countries
+    // Initialize with defaults, then overlay saved preferences
     const initial: Record<string, CountryPreference> = {};
     allCountryOptions.forEach((c) => {
       initial[c.code] = defaultPreference(c);
     });
-    // First country is default
-    if (SUPPORTED_COUNTRIES.length > 0) {
-      initial[SUPPORTED_COUNTRIES[0].code].is_default = true;
-      initial[SUPPORTED_COUNTRIES[0].code].is_active = true;
-    }
-    setPreferences(initial);
+
+    const fetchSaved = async () => {
+      try {
+        const res = await fetch('/api/countries');
+        if (res.ok) {
+          const data = await res.json();
+          const saved = Array.isArray(data) ? data : data.preferences || [];
+          saved.forEach((pref: CountryPreference) => {
+            if (initial[pref.country_code]) {
+              initial[pref.country_code] = { ...initial[pref.country_code], ...pref };
+            } else {
+              initial[pref.country_code] = pref;
+            }
+          });
+        }
+      } catch {}
+      setPreferences(initial);
+    };
+    fetchSaved();
   }, []);
 
   const showToast = useCallback((msg: string) => {
@@ -150,9 +163,28 @@ export default function CountriesPage() {
 
   const handleSave = async (code: string) => {
     setSaving(code);
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(null);
-    showToast(`${preferences[code].country_name} settings saved!`);
+    const pref = preferences[code];
+    try {
+      const method = pref.id ? 'PUT' : 'POST';
+      const url = pref.id ? `/api/countries/${pref.id}` : '/api/countries';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pref),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setPreferences(prev => ({ ...prev, [code]: { ...prev[code], ...saved } }));
+        showToast(`${pref.country_name} settings saved!`);
+      } else {
+        const err = await res.json();
+        showToast(err.error || 'Failed to save');
+      }
+    } catch {
+      showToast('Network error');
+    } finally {
+      setSaving(null);
+    }
   };
 
   const configuredCount = (pref: CountryPreference): number => {

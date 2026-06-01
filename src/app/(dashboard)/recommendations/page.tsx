@@ -52,13 +52,7 @@ function ScoreCircle({ score }: { score: number }) {
 }
 
 // Demo data for preview
-const placeholderJobs: ScoredJob[] = [
-  { id: 'r1', title: 'Senior Software Engineer', company: 'DeepMind', country_code: 'GB', score: 92, recommendation: 'strong_apply', matched_keywords: ['Python', 'Machine Learning', 'TensorFlow', 'Distributed Systems'], missing_keywords: ['Go'], top_risk: '' },
-  { id: 'r2', title: 'Product Manager – AI Platform', company: 'Stripe', country_code: 'US', score: 84, recommendation: 'apply', matched_keywords: ['Product Strategy', 'AI/ML', 'Roadmap'], missing_keywords: ['Payments', 'B2B SaaS'], top_risk: 'Requires US work authorisation' },
-  { id: 'r3', title: 'Lead Data Engineer', company: 'Revolut', country_code: 'GB', score: 76, recommendation: 'apply', matched_keywords: ['Data Pipelines', 'SQL', 'Spark'], missing_keywords: ['Scala', 'Kafka'], top_risk: '' },
-  { id: 'r4', title: 'Full Stack Developer', company: 'Shopify', country_code: 'CA', score: 62, recommendation: 'maybe', matched_keywords: ['React', 'TypeScript', 'Node.js'], missing_keywords: ['Ruby', 'GraphQL', 'Shopify API'], top_risk: 'Salary below minimum preference' },
-  { id: 'r5', title: 'ML Engineer', company: 'BMW Group', country_code: 'DE', score: 48, recommendation: 'skip', matched_keywords: ['Python', 'PyTorch'], missing_keywords: ['C++', 'CUDA', 'Autonomous Driving', 'ROS'], top_risk: 'Visa sponsorship not offered' },
-];
+const placeholderJobs: ScoredJob[] = [];
 
 export default function RecommendationsPage() {
   const [jobs, setJobs] = useState<ScoredJob[]>(placeholderJobs);
@@ -70,6 +64,31 @@ export default function RecommendationsPage() {
 
   useEffect(() => {
     setMounted(true);
+    const fetchScored = async () => {
+      try {
+        const res = await fetch('/api/jobs');
+        if (res.ok) {
+          const data = await res.json();
+          const allJobs = Array.isArray(data) ? data : data.jobs || [];
+          // Filter for scored/recommended jobs and map to ScoredJob format
+          const scored = allJobs
+            .filter((j: Record<string, unknown>) => ['scored', 'recommended', 'maybe'].includes(j.status as string))
+            .map((j: Record<string, unknown>) => ({
+              id: j.id as string,
+              title: j.title as string,
+              company: j.company as string,
+              country_code: (j.country as string) || '',
+              score: (j.parsed_description as Record<string, unknown>)?.overall_score as number || 0,
+              recommendation: (j.status === 'recommended' ? 'apply' : j.status === 'maybe' ? 'maybe' : 'manual_review') as Recommendation,
+              matched_keywords: [] as string[],
+              missing_keywords: [] as string[],
+              top_risk: '',
+            }));
+          if (scored.length > 0) setJobs(scored);
+        }
+      } catch {}
+    };
+    fetchScored();
   }, []);
 
   const filtered = jobs

@@ -61,17 +61,12 @@ export default function JobsPage() {
   const [pasteText, setPasteText] = useState('');
   const [pasteUrl, setPasteUrl] = useState('');
   const [importing, setImporting] = useState(false);
-  const [jobs, setJobs] = useState<Job[]>([
-    { id: 'demo-1', user_id: '', title: 'Senior Software Engineer', company: 'DeepMind', country: 'GB', city: 'London', region: null, work_mode: 'hybrid', salary_min: 95000, salary_max: 130000, salary_currency: 'GBP', source: 'LinkedIn', source_url: null, application_url: null, raw_description: 'We are looking for a Senior Software Engineer...', parsed_description: null, responsibilities: [], requirements: [], nice_to_have: [], visa_sponsorship_text: null, work_authorisation_text: null, seniority: 'Senior', industry: 'AI', contract_type: 'permanent', deadline: null, date_found: '2026-05-26', status: 'scored', duplicate_hash: null, created_at: '', updated_at: '' },
-    { id: 'demo-2', user_id: '', title: 'Product Manager – AI Platform', company: 'Stripe', country: 'US', city: 'San Francisco', region: null, work_mode: 'remote', salary_min: 180000, salary_max: 240000, salary_currency: 'USD', source: 'Company Site', source_url: null, application_url: null, raw_description: 'Lead AI product strategy...', parsed_description: null, responsibilities: [], requirements: [], nice_to_have: [], visa_sponsorship_text: null, work_authorisation_text: null, seniority: 'Senior', industry: 'Fintech', contract_type: 'permanent', deadline: null, date_found: '2026-05-25', status: 'recommended', duplicate_hash: null, created_at: '', updated_at: '' },
-    { id: 'demo-3', user_id: '', title: 'Lead Data Engineer', company: 'Revolut', country: 'GB', city: 'London', region: null, work_mode: 'hybrid', salary_min: 85000, salary_max: 110000, salary_currency: 'GBP', source: 'Indeed', source_url: null, application_url: null, raw_description: 'Build data pipelines at scale...', parsed_description: null, responsibilities: [], requirements: [], nice_to_have: [], visa_sponsorship_text: null, work_authorisation_text: null, seniority: 'Lead', industry: 'Fintech', contract_type: 'permanent', deadline: null, date_found: '2026-05-24', status: 'drafted', duplicate_hash: null, created_at: '', updated_at: '' },
-    { id: 'demo-4', user_id: '', title: 'Full Stack Developer', company: 'Shopify', country: 'CA', city: 'Toronto', region: null, work_mode: 'remote', salary_min: 120000, salary_max: 160000, salary_currency: 'CAD', source: 'LinkedIn', source_url: null, application_url: null, raw_description: 'Join our commerce platform team...', parsed_description: null, responsibilities: [], requirements: [], nice_to_have: [], visa_sponsorship_text: null, work_authorisation_text: null, seniority: 'Mid', industry: 'E-commerce', contract_type: 'permanent', deadline: null, date_found: '2026-05-23', status: 'applied', duplicate_hash: null, created_at: '', updated_at: '' },
-    { id: 'demo-5', user_id: '', title: 'ML Engineer', company: 'BMW Group', country: 'DE', city: 'Munich', region: null, work_mode: 'onsite', salary_min: 75000, salary_max: 95000, salary_currency: 'EUR', source: 'Glassdoor', source_url: null, application_url: null, raw_description: 'Develop ML models for autonomous driving...', parsed_description: null, responsibilities: [], requirements: [], nice_to_have: [], visa_sponsorship_text: null, work_authorisation_text: null, seniority: 'Mid', industry: 'Automotive', contract_type: 'permanent', deadline: null, date_found: '2026-05-22', status: 'new', duplicate_hash: null, created_at: '', updated_at: '' },
-  ]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [filterCountry, setFilterCountry] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterWorkMode, setFilterWorkMode] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [loadingJobs, setLoadingJobs] = useState(true);
 
   // Manual entry state
   const [manualTitle, setManualTitle] = useState('');
@@ -84,6 +79,18 @@ export default function JobsPage() {
 
   useEffect(() => {
     setMounted(true);
+    const fetchJobs = async () => {
+      try {
+        const res = await fetch('/api/jobs');
+        if (res.ok) {
+          const data = await res.json();
+          setJobs(Array.isArray(data) ? data : data.jobs || []);
+        }
+      } catch {} finally {
+        setLoadingJobs(false);
+      }
+    };
+    fetchJobs();
   }, []);
 
   const showToast = (msg: string) => {
@@ -135,31 +142,34 @@ export default function JobsPage() {
   const handleManualAdd = async () => {
     if (!manualTitle || !manualCompany) return;
     setImporting(true);
-    await new Promise((r) => setTimeout(r, 500));
-
-    const newJob: Partial<Job> & { id: string; title: string; company: string; status: JobStatus; date_found: string; raw_description: string } = {
-      id: `job_${Date.now()}`,
-      user_id: '',
-      title: manualTitle,
-      company: manualCompany,
-      country: manualCountry,
-      work_mode: manualWorkMode,
-      salary_min: manualSalary ? Number(manualSalary) : null,
-      status: 'new',
-      date_found: new Date().toISOString().split('T')[0],
-      raw_description: '',
-      responsibilities: [],
-      requirements: [],
-      nice_to_have: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    setJobs((prev) => [newJob as Job, ...prev]);
-    setManualTitle('');
-    setManualCompany('');
-    setManualSalary('');
-    setImporting(false);
+    try {
+      const res = await fetch('/api/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: manualTitle,
+          company: manualCompany,
+          country: manualCountry,
+          work_mode: manualWorkMode,
+          salary_min: manualSalary ? Number(manualSalary) : null,
+          raw_description: '',
+          status: 'new',
+        }),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setJobs(prev => [saved, ...prev]);
+        showToast('✓ Job added');
+        setManualTitle(''); setManualCompany(''); setManualSalary('');
+      } else {
+        const err = await res.json();
+        showToast('✗ ' + (err.error || 'Failed to add job'));
+      }
+    } catch {
+      showToast('✗ Network error');
+    } finally {
+      setImporting(false);
+    }
   };
 
   // Filtered jobs

@@ -122,26 +122,56 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('personal');
   const [profile, setProfile] = useState<CandidateProfile>(defaultProfile);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Load profile - placeholder
-    // fetch('/api/profile').then(...)
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch('/api/profile');
+        if (res.ok) {
+          const data = await res.json();
+          setProfile({ ...defaultProfile, ...data });
+        }
+      } catch {
+        // No profile yet — use defaults
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
   }, []);
 
-  const showToast = useCallback((msg: string) => {
+  const showToast = useCallback((msg: string, type: 'success' | 'error' = 'success') => {
     setToast(msg);
+    setToastType(type);
     setTimeout(() => setToast(null), 3000);
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
-    // Placeholder: POST /api/profile
-    await new Promise((r) => setTimeout(r, 800));
-    setSaving(false);
-    showToast('Profile saved successfully!');
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setProfile({ ...defaultProfile, ...saved });
+        showToast('Profile saved successfully!');
+      } else {
+        const err = await res.json();
+        showToast(err.error || 'Failed to save profile', 'error');
+      }
+    } catch {
+      showToast('Network error — could not save profile', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const updateField = (field: keyof CandidateProfile, value: unknown) => {
@@ -198,9 +228,20 @@ export default function ProfilePage() {
     <div className="page-content space-y-6">
       {/* Toast */}
       {toast && (
-        <div className="fixed top-20 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg bg-accent-emerald/10 border border-accent-emerald/30 text-accent-emerald text-sm font-medium animate-slide-in shadow-lg">
-          <Check className="w-4 h-4" />
+        <div className={`fixed top-20 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium animate-slide-in shadow-lg ${
+          toastType === 'success'
+            ? 'bg-accent-emerald/10 border border-accent-emerald/30 text-accent-emerald'
+            : 'bg-accent-red/10 border border-accent-red/30 text-accent-red'
+        }`}>
+          {toastType === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
           {toast}
+        </div>
+      )}
+
+      {loading && (
+        <div className="glass-card p-12 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-brand-light" />
+          <span className="ml-3 text-muted">Loading profile...</span>
         </div>
       )}
 
