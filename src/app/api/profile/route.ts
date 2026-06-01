@@ -58,6 +58,18 @@ export async function PUT(request: NextRequest) {
     // Strip ownership fields.
     const { id: _id, user_id: _uid, created_at: _ca, ...updateData } = body;
 
+    // Sanitize: convert empty strings to null for date/numeric/enum columns
+    const dateFields = ['availability_date'];
+    const numericFields = ['years_experience'];
+    const enumFields = ['relocation_willingness'];
+    for (const key of Object.keys(updateData)) {
+      if (updateData[key] === '') {
+        if (dateFields.includes(key) || numericFields.includes(key) || enumFields.includes(key)) {
+          updateData[key] = null;
+        }
+      }
+    }
+
     // Upsert: create if not exists, update if exists.
     const { data: profile, error } = await supabase
       .from('candidate_profiles')
