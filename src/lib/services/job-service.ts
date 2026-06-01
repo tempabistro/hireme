@@ -20,24 +20,39 @@ export async function importJob(
     salary_min?: number;
     salary_max?: number;
     salary_currency?: string;
+    status?: string;
   },
 ): Promise<Job> {
   const supabase = await createServerSupabaseClient();
+
+  // Extract a rough title from the first line of the description if none given
+  let title = data.title || 'Untitled Job';
+  let company = data.company || 'Unknown Company';
+  if (!data.title && data.raw_description) {
+    const firstLine = data.raw_description.split('\n').find(l => l.trim().length > 3)?.trim();
+    if (firstLine && firstLine.length < 120) {
+      title = firstLine;
+    }
+  }
+
+  const validStatuses = ['new', 'parsed', 'scored', 'recommended', 'maybe', 'skipped', 'drafted', 'approved', 'applied', 'interview', 'rejected', 'offer', 'withdrawn'];
+  const status = (data.status && validStatuses.includes(data.status)) ? data.status : 'new';
 
   const { data: job, error } = await supabase
     .from('jobs')
     .insert({
       user_id: userId,
-      raw_description: data.raw_description ?? null,
+      raw_description: data.raw_description || '',
       source_url: data.source_url ?? null,
-      title: data.title ?? null,
-      company: data.company ?? null,
+      title,
+      company,
       country: data.country ?? null,
       work_mode: data.work_mode ?? null,
       salary_min: data.salary_min ?? null,
       salary_max: data.salary_max ?? null,
       salary_currency: data.salary_currency ?? null,
-      status: 'imported' as JobStatus,
+      status,
+      date_found: new Date().toISOString().split('T')[0],
     })
     .select()
     .single();
