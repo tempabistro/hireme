@@ -101,7 +101,7 @@ export async function createApplicationPack(
 
   // Gather existing documents for this job
   const { data: documents } = await supabase
-    .from('documents')
+    .from('generated_documents')
     .select('id, document_type')
     .eq('job_id', jobId)
     .eq('user_id', userId)
@@ -147,7 +147,7 @@ export async function createApplicationPack(
   // Update job status
   await supabase
     .from('jobs')
-    .update({ status: 'pack_ready', updated_at: new Date().toISOString() })
+    .update({ status: 'drafted', updated_at: new Date().toISOString() })
     .eq('id', jobId)
     .eq('user_id', userId);
 

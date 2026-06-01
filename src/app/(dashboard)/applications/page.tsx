@@ -54,7 +54,7 @@ export default function ApplicationsPage() {
       const res = await fetch('/api/applications');
       if (res.ok) {
         const data = await res.json();
-        setPacks(data.packs || []);
+        setPacks(Array.isArray(data) ? data : data.packs || []);
       }
     } catch (err) {
       console.error('Failed to fetch application packs:', err);

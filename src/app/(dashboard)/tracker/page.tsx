@@ -64,10 +64,32 @@ export default function TrackerPage() {
 
   async function fetchTrackerData() {
     try {
-      const res = await fetch('/api/jobs?status=applied,approved,interview,rejected,offer,withdrawn');
+      const res = await fetch('/api/jobs');
       if (res.ok) {
         const data = await res.json();
-        setJobs(data.jobs || []);
+        const allJobs = Array.isArray(data) ? data : data.jobs || [];
+        // Filter for jobs in the tracker pipeline
+        const tracked = allJobs
+          .filter((j: Record<string, unknown>) =>
+            ['applied', 'approved', 'drafted', 'interview', 'rejected', 'offer', 'withdrawn'].includes(j.status as string)
+          )
+          .map((j: Record<string, unknown>) => ({
+            id: j.id,
+            company: j.company,
+            title: j.title,
+            country: j.country || '',
+            city: j.city || '',
+            work_mode: j.work_mode || '',
+            salary_min: j.salary_min,
+            salary_max: j.salary_max,
+            salary_currency: j.salary_currency || '',
+            score: null,
+            status: j.status,
+            date_applied: j.updated_at,
+            follow_up_date: null,
+            source: j.source || '',
+          } as TrackerJob));
+        setJobs(tracked);
       }
     } catch (err) {
       console.error('Failed to fetch tracker data:', err);

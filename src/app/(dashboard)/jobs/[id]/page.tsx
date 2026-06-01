@@ -21,6 +21,9 @@ import {
   Award,
   ChevronDown,
   ChevronUp,
+  FileText,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import type { Job, JobStatus, ParsedJobDescription, JobScore } from '@/lib/types';
 import { SUPPORTED_COUNTRIES, getScoreColor, getRecommendationLabel } from '@/lib/types';
@@ -123,6 +126,38 @@ export default function JobDetailPage() {
     }
   }
 
+  async function handleGenerateDoc(type: 'cv' | 'cover-letter') {
+    if (!job) return;
+    setActionLoading(type);
+    try {
+      const res = await fetch(`/api/documents/${type}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: job.id }),
+      });
+      if (res.ok) {
+        await fetchJob();
+      }
+    } catch (err) {
+      console.error(`Generate ${type} failed:`, err);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleDelete() {
+    if (!job || !confirm('Delete this job?')) return;
+    setActionLoading('delete');
+    try {
+      const res = await fetch(`/api/jobs/${params.id}`, { method: 'DELETE' });
+      if (res.ok) router.push('/jobs');
+    } catch (err) {
+      console.error('Delete failed:', err);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="page-content flex items-center justify-center py-20">
@@ -212,12 +247,28 @@ export default function JobDetailPage() {
             Score Job
           </button>
         )}
+        {parsed && (
+          <>
+            <button onClick={() => handleGenerateDoc('cv')} disabled={actionLoading !== null} className="btn-secondary">
+              {actionLoading === 'cv' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+              Generate CV
+            </button>
+            <button onClick={() => handleGenerateDoc('cover-letter')} disabled={actionLoading !== null} className="btn-secondary">
+              {actionLoading === 'cover-letter' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit3 className="w-4 h-4" />}
+              Generate Cover Letter
+            </button>
+          </>
+        )}
         {score && (
           <button onClick={handleGeneratePack} disabled={actionLoading !== null} className="btn-success">
             {actionLoading === 'pack' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
             Generate Application Pack
           </button>
         )}
+        <button onClick={handleDelete} disabled={actionLoading !== null} className="btn-ghost text-red-400 hover:text-red-300">
+          {actionLoading === 'delete' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+          Delete
+        </button>
       </div>
 
       {/* Score section */}
