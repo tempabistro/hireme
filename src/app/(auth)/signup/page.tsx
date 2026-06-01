@@ -31,6 +31,16 @@ export default function SignupPage() {
 
     setLoading(true);
 
+    // Preview mode — skip auth
+    const isSupabaseConfigured =
+      !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_URL !== 'your_supabase_url_here';
+
+    if (!isSupabaseConfigured) {
+      router.push('/dashboard');
+      return;
+    }
+
     try {
       const supabase = createClient();
       const { data, error: signUpError } = await supabase.auth.signUp({

@@ -14,10 +14,21 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const isSupabaseConfigured =
+    typeof window !== 'undefined' &&
+    !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL !== 'your_supabase_url_here';
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    // Preview mode — skip auth
+    if (!isSupabaseConfigured) {
+      router.push('/dashboard');
+      return;
+    }
 
     try {
       const supabase = createClient();
