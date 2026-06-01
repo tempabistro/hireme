@@ -38,13 +38,20 @@ export default function LoginPage() {
       });
 
       if (error) {
-        setError(error.message);
+        // Translate common Supabase errors
+        if (error.message.includes('Invalid path')) {
+          setError('Cannot connect to authentication server. Please check your Supabase URL in Vercel environment variables.');
+        } else if (error.message.includes('Invalid login')) {
+          setError('Invalid email or password.');
+        } else {
+          setError(error.message);
+        }
         return;
       }
 
       router.push('/dashboard');
-    } catch {
-      setError('An unexpected error occurred. Please try again.');
+    } catch (err) {
+      setError('Cannot connect to authentication server. Please verify your Supabase environment variables are correct.');
     } finally {
       setLoading(false);
     }
